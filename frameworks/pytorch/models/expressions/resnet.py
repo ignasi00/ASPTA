@@ -164,7 +164,7 @@ class ResNet(nn.Module):
                                                     stride=2, dilate=replace_stride_with_dilation[2])
 
         # Classification head of ResNet (output: scores; _, pred = torch.max(outputs, 1) for class index)
-        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1)) # keeps the number of channels but force the feature map to be of HxW=1x1 (any input size should work)
         self.fc = nn.Linear(planes_per_layer[3] * block_class.expansion, num_classes)
 
     def forward(self, x):

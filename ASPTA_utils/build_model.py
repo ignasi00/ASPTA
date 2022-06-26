@@ -12,7 +12,7 @@ from frameworks.pytorch.models.algorithms.region_proposal_network import RPNHead
 from frameworks.pytorch.models.expressions.deconvolutional_single_shot_detector import DSSD_ProcessingModule
 from frameworks.pytorch.models.expressions.feature_pyramid_network import FPN
 from frameworks.pytorch.models.expressions.resnet import resnet50
-from frameworks.pytorch.models.expressions.single_stage_headless import SSH_Residual_Context
+from frameworks.pytorch.models.expressions.single_stage_headless import SSH_Residual_Context, SSH_Context
 from frameworks.pytorch.models.expressions.utils import conv1x1_relu, conv3x3_relu
 from frameworks.pytorch.models.head_hunter import HH_ContextSensitivePrediction
 from frameworks.pytorch.models.head_hunter import HH_FPN_ContextualBackbone, HH_RPN, HH_RoIHead
@@ -28,6 +28,9 @@ def _conv_1X1_leaky(in_planes, out_planes, stride=1):
 def _conv_3X3_leaky(in_planes, out_planes, stride=1):
     leaky = 0.1 if out_planes <= 64 else 0
     return conv3x3_relu(in_planes, out_planes, stride=stride, leaky=leaky, bias=True)
+
+def _conv_3X3(in_planes, out_planes):
+    return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=1, padding=1)
 
 def fpn_extra_block(x, y):
     return F.max_pool2d(x[-1], 1, 2, 0)
@@ -59,22 +62,30 @@ class ListAnchorGenerator(nn.Module): # TODO: Implement my version of AnchorGene
         return self.anchor_generator(images, features)
 
 
+def build_SSH_Context(in_planes, out_planes):
+    return SSH_Context(in_planes, out_planes, conv_module=_conv_3X3)
+
+
 def build_model(num_classes_backbone=1000, num_classes=2, rpn_depth=1, deconv=True):
     base_backbone = resnet50(num_classes_backbone)
-    base_backbone = FeatureExtractor(base_backbone, ['layer1', 'layer2', 'layer3', 'layer4'])
+    layers_names = ['layer1', 'layer2', 'layer3', 'layer4']
+    base_backbone = FeatureExtractor(base_backbone, layers_names)
     in_channels_list = [256, 512, 1024, 2048]
-    base_backbone = FPN(base_backbone, in_channels_list=in_channels_list, out_channels=256, channels_funnel=_conv_1X1_leaky, interpolator=None, interpolator_filter=_conv_3X3_leaky, extra_blocks=fpn_extra_block)
+    base_backbone = FPN(base_backbone, in_channels_list=in_channels_list, out_channels=256, channels_funnel=_conv_1X1_leaky, interpolator=None, interpolator_filter=_conv_3X3_leaky, extra_blocks=None) #fpn_extra_block)
 
-    preprocessing_context = DSSD_ProcessingModule(256, 1024)
-    context_processing = SSH_Residual_Context(1024, 512)
-    context_sensitive_module = HH_ContextSensitivePrediction(preprocessing_context, context_processing, 512, 256)
+    context_sensitive_modules = nn.ModuleList()
+    for _ in range(len(layers_names)):
+        preprocessing_context = DSSD_ProcessingModule(256, 1024, conv_module=None)
+        context_processing = SSH_Residual_Context(1024, 512, conv_module=_conv_3X3, context_module=build_SSH_Context)
+        context_sensitive_module = HH_ContextSensitivePrediction(preprocessing_context, context_processing, 512, 256)
+        context_sensitive_modules.append(context_sensitive_module)
 
-    backbone = HH_FPN_ContextualBackbone(base_backbone, context_sensitive_module)
+    backbone = HH_FPN_ContextualBackbone(base_backbone, context_sensitive_modules)
 
     scales = ((12,), (32,), (64,), (112,), (196, ), (256,), (384,), (512,))
     aspect_ratios = ((0.5, 1.0, 2.0),) * len(scales)
     anchor_generator = ListAnchorGenerator(scales, aspect_ratios)
-    rpn_processing_object = [Conv2dNormActivation(256, 256, kernel_size=3, norm_layer=None) for _ in range(rpn_depth)]
+    rpn_processing_object = nn.ModuleList([Conv2dNormActivation(256, 256, kernel_size=3, norm_layer=None) for _ in range(rpn_depth)])
     num_anchors_per_location = len(scales[0]) * len(aspect_ratios[0])
     rpn_head = RPNHead(rpn_processing_object, 256, num_anchors_per_location)
     proposals_filter = build_batches_proposals_filter(detach=True, pre_nms_top_n=1000, min_size=1e-3, score_thresh=0.0, nms_thresh=0.7, post_nms_top_n=1000)

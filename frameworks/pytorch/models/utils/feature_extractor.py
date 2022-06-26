@@ -21,6 +21,6 @@ class FeatureExtractor(nn.Module):
         return fn
 
     def forward(self, x):
-        _ = self.model(x)
+        _ = self.model(x) # TODO: if it fails because the output, make veriosn with a try-except "WhateverException" as e: self.exception_handler(e) (default functional print)
         output = [self._features[layer_id] for layer_id in self.layers]
         return output #self._features[self.layers[0]], *[self._features[layer_id] for layer_id in self.layers[1:]]

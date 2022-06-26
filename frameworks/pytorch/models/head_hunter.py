@@ -29,14 +29,14 @@ class HH_ContextSensitivePrediction(nn.Module):
 
 class HH_FPN_ContextualBackbone(nn.Module):
     
-    def __init__(self, base_fpn_backbone, context_sensitive_module):
+    def __init__(self, base_fpn_backbone, context_sensitive_modules):
         super(HH_FPN_ContextualBackbone, self).__init__()
         self.fpn_backbone = base_fpn_backbone
-        self.context_module = context_sensitive_module
+        self.context_modules = context_sensitive_modules
     
     def forward(self, image_list):
         features_list = self.fpn_backbone(torch.stack(image_list, dim=0))
-        features_list = [self.context_module(feat) for feat in features_list]
+        features_list = [context_module(feat) for context_module, feat in zip(self.context_modules, features_list)]
         return features_list
 
 class HH_RPN(nn.Module):
