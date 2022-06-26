@@ -23,7 +23,7 @@ class SSH_Context(nn.Module):
 
         self.conv1 = conv_module(in_planes, hidden_planes)
         self.conv2a = conv_module(hidden_planes, hidden_planes + oddity)
-        self.conv2b = nn.Sequential([conv_module(hidden_planes, hidden_planes), conv_module(hidden_planes, hidden_planes)])
+        self.conv2b = nn.Sequential(conv_module(hidden_planes, hidden_planes), conv_module(hidden_planes, hidden_planes))
     
     def forward(self, x):
         x = self.conv1(x)
@@ -39,7 +39,7 @@ class SSH_Residual_Context(nn.Module):
         super(SSH_Residual_Context, self).__init__()
 
         conv_module = conv_module or _conv3x3_bn_relu_leaky
-        context_module = context_module or SSH_Residual_Context
+        context_module = context_module or SSH_Context
 
         hidden_planes = out_planes // 2
         oddity = out_planes % 2

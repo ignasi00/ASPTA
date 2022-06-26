@@ -36,15 +36,15 @@ def conv3x3_bn(in_planes, out_planes, stride=1, padding=1):
         nn.BatchNorm2d(out_planes)
     )
 
-def conv1x1_relu(in_planes, out_planes, stride=1, leaky=0):
+def conv1x1_relu(in_planes, out_planes, stride=1, leaky=0, bias=False):
     return nn.Sequential(
-        nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=stride, padding=0, bias=False),
+        nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=stride, padding=0, bias=bias),
         nn.LeakyReLU(negative_slope=leaky, inplace=True)
     )
 
-def conv3x3_relu(in_planes, out_planes, stride=1, padding=1, leaky=0):
+def conv3x3_relu(in_planes, out_planes, stride=1, padding=1, leaky=0, bias=False):
     return nn.Sequential(
-        nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride, padding=padding, bias=False),
+        nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride, padding=padding, bias=bias),
         nn.LeakyReLU(negative_slope=leaky, inplace=True)
     )
 
