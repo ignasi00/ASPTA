@@ -16,18 +16,19 @@ class DeconvolutionModule(nn.Module):
 class DSSD_ProcessingModule(nn.Module):
     # Processing just before Classification and Regresion Heads
 
-    def __init__(self, in_planes, out_planes, hidden_planes=None, conv_module=None, process_residual=False, relu=True):
+    def __init__(self, in_planes, out_planes, hidden_planes=None, conv_module=None, process_residual=False, relu=True, conv1b_module=None):
         super(DSSD_ProcessingModule, self).__init__()
 
         conv_module = conv_module or conv1x1_bn
+        conv1b_module = conv1b_module or conv_module
         hidden_planes = hidden_planes or out_planes // 4
         
         if relu:
             self.conv1a = nn.Sequential(conv_module(in_planes, hidden_planes), nn.ReLU(inplace=True))
-            self.conv1b = nn.Sequential(conv_module(hidden_planes, hidden_planes), nn.ReLU(inplace=True))
+            self.conv1b = nn.Sequential(conv1b_module(hidden_planes, hidden_planes), nn.ReLU(inplace=True))
         else:
             self.conv1a = conv_module(in_planes, hidden_planes)
-            self.conv1b = conv_module(hidden_planes, hidden_planes)
+            self.conv1b = conv1b_module(hidden_planes, hidden_planes)
         self.conv1c = conv_module(hidden_planes, out_planes)
         
         if (in_planes != out_planes) or (process_residual):

@@ -1,4 +1,6 @@
 
+import copy
+import re
 import torch
 import torch.nn as nn
 from torchvision.models.detection.faster_rcnn import TwoMLPHead
@@ -13,7 +15,7 @@ from frameworks.pytorch.models.expressions.deconvolutional_single_shot_detector 
 from frameworks.pytorch.models.expressions.feature_pyramid_network import FPN
 from frameworks.pytorch.models.expressions.resnet import resnet50
 from frameworks.pytorch.models.expressions.single_stage_headless import SSH_Residual_Context, SSH_Context
-from frameworks.pytorch.models.expressions.utils import conv1x1_relu, conv3x3_relu
+from frameworks.pytorch.models.expressions.utils import conv1x1_relu, conv3x3_relu, conv1x1_bn, conv3x3_bn
 from frameworks.pytorch.models.head_hunter import HH_ContextSensitivePrediction
 from frameworks.pytorch.models.head_hunter import HH_FPN_ContextualBackbone, HH_RPN, HH_RoIHead
 from frameworks.pytorch.models.utils.feature_extractor import FeatureExtractor
@@ -75,7 +77,7 @@ def build_model(num_classes_backbone=1000, num_classes=2, rpn_depth=1, deconv=Tr
 
     context_sensitive_modules = nn.ModuleList()
     for _ in range(len(layers_names)):
-        preprocessing_context = DSSD_ProcessingModule(256, 1024, conv_module=None)
+        preprocessing_context = DSSD_ProcessingModule(256, 1024, conv_module=conv1x1_bn , conv1b_module=conv3x3_bn)
         context_processing = SSH_Residual_Context(1024, 512, conv_module=_conv_3X3, context_module=build_SSH_Context)
         context_sensitive_module = HH_ContextSensitivePrediction(preprocessing_context, context_processing, 512, 256)
         context_sensitive_modules.append(context_sensitive_module)
@@ -110,7 +112,77 @@ def build_model(num_classes_backbone=1000, num_classes=2, rpn_depth=1, deconv=Tr
     return model
 
 def adapt_state_dict(state_dict):
-    pass
+    state_dict_v2 = copy.deepcopy(state_dict)
+
+    for key in state_dict.keys():
+        levels = key.split('.')
+
+        new_key = re.sub(r'module\.', lambda match : f'', key)
+        state_dict_v2[new_key] = state_dict_v2.pop(key)
+        
+        new_key2 = re.sub(r'body', lambda match : f'fpn_backbone.backbone.model', new_key)
+        state_dict_v2[new_key2] = state_dict_v2.pop(new_key)
+
+        new_key = re.sub(r'fpn\.inner_blocks\.([0-9]+)', lambda match : f'fpn_backbone.preprocessing.{int(match.group(1))}.0', new_key2)
+        state_dict_v2[new_key] = state_dict_v2.pop(new_key2)
+
+        new_key2 = re.sub(r'fpn\.layer_blocks\.([0-9]+)', lambda match : f'fpn_backbone.postprocessing.{int(match.group(1))}.0', new_key)
+        state_dict_v2[new_key2] = state_dict_v2.pop(new_key)
+
+        new_key = re.sub(r'ssh([0-9]+)', lambda match : f'context_modules.{int(match.group(1)) - 1}', new_key2)
+        state_dict_v2[new_key] = state_dict_v2.pop(new_key2)
+
+        new_key2 = re.sub(r'branch1', lambda match : f'preprocessing_module.conv2', new_key)
+        state_dict_v2[new_key2] = state_dict_v2.pop(new_key)
+
+        new_key = re.sub(r'branch2a', lambda match : f'preprocessing_module.conv1a.0', new_key2)
+        state_dict_v2[new_key] = state_dict_v2.pop(new_key2)
+
+        new_key2 = re.sub(r'branch2b', lambda match : f'preprocessing_module.conv1b.0', new_key)
+        state_dict_v2[new_key2] = state_dict_v2.pop(new_key)
+
+        new_key = re.sub(r'branch2c', lambda match : f'preprocessing_module.conv1c', new_key2)
+        state_dict_v2[new_key] = state_dict_v2.pop(new_key2)
+
+        new_key2 = re.sub(r'ssh_1', lambda match : f'contextual_module.conv', new_key)
+        state_dict_v2[new_key2] = state_dict_v2.pop(new_key)
+
+        new_key = re.sub(r'ssh_dimred', lambda match : f'contextual_module.context.conv1', new_key2)
+        state_dict_v2[new_key] = state_dict_v2.pop(new_key2)
+
+        new_key2 = re.sub(r'ssh_2', lambda match : f'contextual_module.context.conv2a', new_key)
+        state_dict_v2[new_key2] = state_dict_v2.pop(new_key)
+
+        new_key = re.sub(r'ssh_3a', lambda match : f'contextual_module.context.conv2b.0', new_key2)
+        state_dict_v2[new_key] = state_dict_v2.pop(new_key2)
+
+        new_key2 = re.sub(r'ssh_3b', lambda match : f'contextual_module.context.conv2b.1', new_key)
+        state_dict_v2[new_key2] = state_dict_v2.pop(new_key)
+
+        new_key = re.sub(r'ssh_final', lambda match : f'conv', new_key2)
+        state_dict_v2[new_key] = state_dict_v2.pop(new_key2)
+
+        new_key2 = re.sub(r'head\.conv', lambda match : f'rpn_head.conv.0.0', new_key)
+        state_dict_v2[new_key2] = state_dict_v2.pop(new_key)
+
+        new_key = re.sub(r'\.head\.', lambda match : f'.rpn_head.', new_key2)
+        state_dict_v2[new_key] = state_dict_v2.pop(new_key2)
+
+        new_key2 = re.sub(r'roi_heads', lambda match : f'roi_head', new_key)
+        state_dict_v2[new_key2] = state_dict_v2.pop(new_key)
+
+        new_key = re.sub(r'box_head', lambda match : f'processing_object', new_key2)
+        state_dict_v2[new_key] = state_dict_v2.pop(new_key2)
+
+        new_key2 = re.sub(r'box_predictor\.cls_score', lambda match : f'cls_layer.1', new_key)
+        state_dict_v2[new_key2] = state_dict_v2.pop(new_key)
+
+        new_key = re.sub(r'box_predictor\.bbox_pred', lambda match : f'bbox_layer.1', new_key2)
+        state_dict_v2[new_key] = state_dict_v2.pop(new_key2)
+
+    # There is no backbone.model.fc.weight and backbone.model.fc.bias => strict=False is mandatory
+    
+    return state_dict_v2
 
 # TODO: GeneralizedRCNNTransform at DataLoading
 
