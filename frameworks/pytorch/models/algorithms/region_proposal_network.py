@@ -176,6 +176,7 @@ class Batches_RPN(nn.Module):
         return bbox_pred
 
     def _apply_deltas(self, anchors, bbox_deltas):
+        # Version oly for RPN, when #cls > 1 => it changes
         # anchors       : [B * H' * W' * #A, 4]
         # bbox_deltas   : [B * H' * W' * #A, 4]
         # output        : [B * H' * W' * #A, 4]
@@ -199,10 +200,10 @@ class Batches_RPN(nn.Module):
         dw = torch.clamp(dw, max=self.bbox_xform_clip) # [B * H' * W' * #A]
         dh = torch.clamp(dh, max=self.bbox_xform_clip) # [B * H' * W' * #A]
 
-        pred_ctr_x = dx * widths[:, None] + ctr_x[:, None] # [B * H' * W' * #A]
-        pred_ctr_y = dy * heights[:, None] + ctr_y[:, None] # [B * H' * W' * #A]
-        pred_w = torch.exp(dw) * widths[:, None] # [B * H' * W' * #A]
-        pred_h = torch.exp(dh) * heights[:, None] # [B * H' * W' * #A]
+        pred_ctr_x = dx * widths + ctr_x # [B * H' * W' * #A]
+        pred_ctr_y = dy * heights + ctr_y # [B * H' * W' * #A]
+        pred_w = torch.exp(dw) * widths # [B * H' * W' * #A]
+        pred_h = torch.exp(dh) * heights # [B * H' * W' * #A]
 
         # Distance from center to box's corner.
         c_to_c_h = torch.tensor(0.5, dtype=pred_ctr_y.dtype, device=pred_h.device) * pred_h # [B * H' * W' * #A]

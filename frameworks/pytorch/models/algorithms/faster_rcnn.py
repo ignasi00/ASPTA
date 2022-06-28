@@ -17,10 +17,10 @@ class RoIHead(nn.Module):
     
     def forward(self, features_list, proposals, image_list):
         image_shapes = [img.shape[1:] for img in image_list]
-        box_features = self.roi_pooling(features_list, proposals, image_shapes)
-        box_features = self.processing_object(box_features)
-        class_logits = self.cls_layer(box_features)
-        box_regression = self.bbox_layer(box_features)
+        box_features = self.roi_pooling(features_list, proposals, image_shapes) # [N, C, Hb, Wb]
+        box_features = self.processing_object(box_features) # [N, C']
+        class_logits = self.cls_layer(box_features) # [N, #cls]
+        box_regression = self.bbox_layer(box_features) # [N, #cls * 4]
 
         return class_logits, box_regression
 
@@ -35,9 +35,9 @@ class FasterRCNN(nn.Module):
         self.roi_head = roi_head
 
     def forward(self, image_list):
-        features_list = self.backbone(image_list)
+        features_list = self.backbone(image_list)  # list of L tensors [B, C, H_j, W_j]
 
-        proposals, _, _, _ = self.rpn(image_list, features_list)
-        class_logits, box_regression = self.roi_head(features_list, proposals, image_list)
+        proposals, _, _, _ = self.rpn(image_list, features_list) # list of B tensors [N_i, 4]
+        class_logits, box_regression = self.roi_head(features_list, proposals, image_list) # [N, #cls], [N, #cls * 4]
 
         return class_logits, box_regression, proposals

@@ -72,5 +72,6 @@ class HH_RoIHead(nn.Module):
 
 ####
 
-class HeadHunter_Tracker():
-    pass
+# TODO: torch version of HeadHunter_Tracker
+# class HeadHunter_Tracker():
+#     pass
