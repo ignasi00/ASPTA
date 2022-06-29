@@ -14,8 +14,10 @@ from ASPTA_utils.pseudo_dataset import SequencesPseudoDataset, SequenceImagesPse
 
 
 # I/O VARIABLES OR HYPERPARAMETER I CAN TOUCH
-PRETRAINED_PATH = '/mnt/c/Users/Ignasi/Downloads/FT_R50_epoch_24.pth'
-BASE_DIR = '/mnt/c/Users/Ignasi/Downloads/HT21/'
+#PRETRAINED_PATH = '/mnt/c/Users/Ignasi/Downloads/FT_R50_epoch_24.pth'
+#BASE_DIR = '/mnt/c/Users/Ignasi/Downloads/HT21/'
+PRETRAINED_PATH = './FT_R50_epoch_24.pth'
+BASE_DIR = './HT21/'
 DATASETS = [('train', 'test'), ('train', ), ('test', )][0]
 
 SAVE_FRAMES = True
