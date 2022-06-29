@@ -170,7 +170,7 @@ class Batches_RPN(nn.Module):
         # head_output : [B, #A * channels, H_i, W_i]
         # output : [B, H_i * W_i * #A, channels]
 
-        B = head_output.shape[0]
+        B, _, H, W = head_output.shape
         bbox_pred = head_output.view(B, -1, channels, H, W).permute(0, 3, 4, 1, 2).reshape(B, -1, channels)
         
         return bbox_pred
@@ -183,18 +183,18 @@ class Batches_RPN(nn.Module):
         
         out_shape = bbox_deltas.shape
         anchors = anchors.to(bbox_deltas[-1].dtype) # If the dtype is a cuda type, it will put the data on GPU
-        bbox_deltas = bbox_deltas.reshape(anchor.shape[0], -1) # [B * H' * W' * #A, 4]
+        bbox_deltas = bbox_deltas.reshape(anchors.shape[0], -1) # [B * H' * W' * #A, 4]
 
         
-        widths = boxes[:, 2] - boxes[:, 0] # [B * H' * W' * #A]
-        heights = boxes[:, 3] - boxes[:, 1] # [B * H' * W' * #A]
-        ctr_x = boxes[:, 0] + 0.5 * widths # [B * H' * W' * #A]
-        ctr_y = boxes[:, 1] + 0.5 * heights # [B * H' * W' * #A]
+        widths = anchors[:, 2] - anchors[:, 0] # [B * H' * W' * #A]
+        heights = anchors[:, 3] - anchors[:, 1] # [B * H' * W' * #A]
+        ctr_x = anchors[:, 0] + 0.5 * widths # [B * H' * W' * #A]
+        ctr_y = anchors[:, 1] + 0.5 * heights # [B * H' * W' * #A]
 
-        dx = rel_codes[:, 0] # [B * H' * W' * #A]
-        dy = rel_codes[:, 1] # [B * H' * W' * #A]
-        dw = rel_codes[:, 2] # [B * H' * W' * #A]
-        dh = rel_codes[:, 3] # [B * H' * W' * #A]
+        dx = bbox_deltas[:, 0] # [B * H' * W' * #A]
+        dy = bbox_deltas[:, 1] # [B * H' * W' * #A]
+        dw = bbox_deltas[:, 2] # [B * H' * W' * #A]
+        dh = bbox_deltas[:, 3] # [B * H' * W' * #A]
 
         # Prevent sending too large values into torch.exp()
         dw = torch.clamp(dw, max=self.bbox_xform_clip) # [B * H' * W' * #A]

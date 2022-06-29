@@ -1,7 +1,9 @@
 
 import math
+import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torchvision.models.detection._utils as det_utils
 from torchvision.ops import boxes as box_ops
 
@@ -17,16 +19,16 @@ def apply_deltas(box_regression, proposals, bbox_xform_clip=math.log(1000.0 / 16
     box_regression = box_regression.reshape(proposals.shape[0], -1) # [N, 4 * #cls]
     
     # [N] x 4
-    widths = boxes[:, 2] - boxes[:, 0]
-    heights = boxes[:, 3] - boxes[:, 1]
-    ctr_x = boxes[:, 0] + 0.5 * widths
-    ctr_y = boxes[:, 1] + 0.5 * heights
+    widths = proposals[:, 2] - proposals[:, 0]
+    heights = proposals[:, 3] - proposals[:, 1]
+    ctr_x = proposals[:, 0] + 0.5 * widths
+    ctr_y = proposals[:, 1] + 0.5 * heights
 
     # different deltas per class [N, #cls] x 4
-    dx = rel_codes[:, 0::4]
-    dy = rel_codes[:, 1::4]
-    dw = rel_codes[:, 2::4]
-    dh = rel_codes[:, 3::4]
+    dx = box_regression[:, 0::4]
+    dy = box_regression[:, 1::4]
+    dw = box_regression[:, 2::4]
+    dh = box_regression[:, 3::4]
 
     # Prevent sending too large values into torch.exp()
     dw = torch.clamp(dw, max=bbox_xform_clip)
@@ -135,7 +137,7 @@ def default_postprocess(class_logits, box_regression, proposals, image_list, ori
         bbox = resize_boxes(bbox, im_s, o_im_s)
         all_boxes[i] = bbox
     
-    return boxes, scores
+    return all_boxes, all_scores
 
 def build_postprocess(score_thresh=0, nms_thresh=0, detections_per_img=None):
     def postprocess(class_logits, box_regression, proposals, image_list, original_image_sizes):
@@ -190,6 +192,7 @@ def get_refined_detection(detections, im_shape, confidence):
             continue
         
         refined_detection.append(dets)
+        
     refined_detection = np.array(refined_detection)
     return refined_detection
 

@@ -4,7 +4,7 @@ import numpy as np
 import cv2
 import matplotlib.pyplot as plt; from PIL import Image 
 from scipy.stats import norm
-from im_utils import get_neighbour_loc, compute_centroid, get_area, scatter_particles, box_from_centroid
+from .im_utils import get_neighbour_loc, compute_centroid, get_area, scatter_particles, box_from_centroid
 
 
 class RoIPF:

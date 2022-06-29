@@ -1,6 +1,7 @@
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 from .utils import conv1x1_bn_relu, conv3x3_bn_relu
 
@@ -13,7 +14,7 @@ def _conv_bn3X3_leaky(in_planes, out_planes, stride=1, padding=1):
     leaky = 0.1 if out_planes <= 64 else 0
     return conv3x3_bn_relu(in_planes, out_planes, stride=stride, padding=padding, leaky=leaky)
 
-def _nearest_interpolator(intput_, out_size):
+def _nearest_interpolator(input_, out_size):
     return F.interpolate(input_, size=out_size, mode="nearest")
 
 class FPN(nn.Module):
@@ -49,7 +50,7 @@ class FPN(nn.Module):
         smallest_output = self.postprocessing[-1](output_list[-1])
 
         # Smaller levels are aggregated with bigger levels (the smallest was only processed further at the previous step)
-        output_list = [self._merge(self, output_big, output_small, postprocess) for output_big, output_small, postprocess in zip(output_list[:-1], output_list[1:], self.postprocessing[:-1])]
+        output_list = [self._merge(output_big, output_small, postprocess) for output_big, output_small, postprocess in zip(output_list[:-1], output_list[1:], self.postprocessing[:-1])]
         output_list.append(smallest_output)
 
         if self.extra_blocks is not None:

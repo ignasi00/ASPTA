@@ -14,9 +14,9 @@ import json
 import pycocotools.mask as cocomask
 from munkres import Munkres, print_matrix, make_cost_matrix
 
-from track import Track
-from im_utils import * # check_area, compute_histogram, warp_pos, compute_centroid
-from scipy.misc import imread, imsave
+from .track import Track
+from .im_utils import * # check_area, compute_histogram, warp_pos, compute_centroid
+from imageio import imread, imsave
 from scipy.spatial.distance import cdist
 from copy import deepcopy
 from operator import itemgetter
@@ -133,7 +133,7 @@ class Tracker():
         regress_pos = torch.tensor(regress_pos)
         regress_pos = regress_pos.to(self.device)
         self.change_rpn(self.obj_detector, [regress_pos])
-        t_box, t_score, detections = self.apply_reg_model(img)
+        t_box, t_score, detections = self.apply_reg_model(img, self.obj_detector)
 
         #t_score = t_score[:, 1:].squeeze(dim=1).detach()
         #t_box = t_box.cpu()

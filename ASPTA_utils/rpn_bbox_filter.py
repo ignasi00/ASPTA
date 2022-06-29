@@ -9,7 +9,7 @@ def _get_top_n_idx(objectness, num_proposals_per_level, pre_nms_top_n=None):
     r = []
     offset = 0
     for ob in objectness.split(num_proposals_per_level, 1):
-        num_proposals = op.shape[1]
+        num_proposals = ob.shape[1]
         pre_nms_top_n = pre_nms_top_n or num_proposals
 
         pre_nms_top_n = det_utils._topk_min(ob, pre_nms_top_n, 1) # same as min(ob.shape[1], pre_nms_top_n)
@@ -20,7 +20,7 @@ def _get_top_n_idx(objectness, num_proposals_per_level, pre_nms_top_n=None):
     top_n_idx = torch.cat(r, dim=1)
     return top_n_idx
 
-def _score_based_filter(objectness, levels, proposals, num_proposals_per_level, pre_nms_top_n):
+def _score_based_filter(objectness, levels, proposals, num_proposals_per_level, pre_nms_top_n, device):
     # Get the best "N = min(N, #A * H' * W')" objectness indexes for each level and image
     top_n_idx = _get_top_n_idx(objectness, num_proposals_per_level, pre_nms_top_n=pre_nms_top_n) # [B, N]
 
@@ -35,7 +35,7 @@ def _score_based_filter(objectness, levels, proposals, num_proposals_per_level, 
 
 def build_nms_funct(nms_thresh):
     def nms_funct(boxes, scores, lvl):
-        return box_ops.batched_nms(boxes, scores, lvl, nms_thresh=nms_thresh)
+        return box_ops.batched_nms(boxes, scores, lvl, nms_thresh)
     return nms_funct
 
 def default_batches_proposals_filter(proposals, objectness, image_list, num_proposals_per_level, detach=True, pre_nms_top_n=None, min_size=0, score_thresh=0, nms_funct=None, post_nms_top_n=None):
@@ -58,7 +58,7 @@ def default_batches_proposals_filter(proposals, objectness, image_list, num_prop
     level_mask = torch.repeat_interleave(torch.as_tensor(num_proposals_per_level)) # [#A * H' * W'] with #A * H_i * W_i elemens of value i with i from 0 to L-1
     level_mask = level_mask.reshape(1, -1).expand_as(objectness) # [B, #A * H' * W']
 
-    objectness, levels, proposals = _score_based_filter(objectness, levels, proposals, num_proposals_per_level, pre_nms_top_n) # [B, N], [B, N], [B, N]
+    objectness, levels, proposals = _score_based_filter(objectness, level_mask, proposals, num_proposals_per_level, pre_nms_top_n, device) # [B, N], [B, N], [B, N]
 
     objectness_prob = torch.sigmoid(objectness) # [B, N]
 

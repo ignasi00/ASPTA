@@ -1,12 +1,13 @@
 # TODO: program for list creation and dataset like I like
 
-from albumentations.pytorch import ToTensor
+from albumentations.pytorch import ToTensorV2 as ToTensor
 import configparser
+from glob import glob
 import os
 import os.path as osp
-from scipy.misc import imread
+from imageio import imread
 import torch
-import rorch.nn as nn
+import torch.nn as nn
 from torch.utils.data import Dataset
 
 
@@ -44,7 +45,7 @@ class SequencesPseudoDataset(Dataset):
         seq_dir, seq_ext, im_shape, cam_motion = process_config(seqfile)
 
         im_path = osp.join(mot_p, seq_dir)
-        seq_images = sorted(glob(osp.join(im_path, '*' + seq_ext)))
+        seq_images = sorted(glob(osp.join(f'{im_path}1', '*' + seq_ext)))
 
         return seq_images, im_shape, cam_motion, im_path
 

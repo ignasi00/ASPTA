@@ -4,6 +4,7 @@ import re
 import torch
 import torch.nn as nn
 from torchvision.models.detection.faster_rcnn import TwoMLPHead
+from torchvision.models.detection.image_list import ImageList
 from torchvision.models.detection.rpn import AnchorGenerator
 from torchvision.ops.misc import ConvNormActivation
 from torchvision.ops import MultiScaleRoIAlign
@@ -48,9 +49,9 @@ class ListMultiScaleRoIAlign(nn.Module): # TODO: Implement my version of MultiSc
         super().__init__()
         self.multiscale_RoI_align = MultiScaleRoIAlign(featmap_names=featmap_names, output_size=output_size, sampling_ratio=sampling_ratio)
 
-    def forward(self, features_list, proposals, image_list):
+    def forward(self, features_list, proposals, image_shapes):
         features_dict = {i : x for i, x in enumerate(features_list)}
-        image_shapes = [img.shape[1:] for img in image_list]
+        #image_shapes = [img.shape[1:] for img in image_list]
         return self.multiscale_RoI_align(features_dict, proposals, image_shapes)
 
 class ListAnchorGenerator(nn.Module): # TODO: Implement my version of AnchorGenerator
@@ -61,6 +62,7 @@ class ListAnchorGenerator(nn.Module): # TODO: Implement my version of AnchorGene
     def forward(self, image_list, features):
         images_size = [img.shape[-2:] for img in image_list]
         images = ImageList(torch.stack(image_list), images_size) # This asumes a constant input size of the images
+
         return self.anchor_generator(images, features)
 
 
@@ -84,10 +86,11 @@ def build_model(num_classes_backbone=1000, num_classes=2, rpn_depth=1, deconv=Tr
 
     backbone = HH_FPN_ContextualBackbone(base_backbone, context_sensitive_modules)
 
-    scales = ((12,), (32,), (64,), (112,), (196, ), (256,), (384,), (512,))
+    #scales = ((12,), (32,), (64,), (112,), (196, ), (256,), (384,), (512,))
+    scales = ((64,), (112,), (196, ), (256,))
     aspect_ratios = ((0.5, 1.0, 2.0),) * len(scales)
     anchor_generator = ListAnchorGenerator(scales, aspect_ratios)
-    rpn_processing_object = nn.ModuleList([Conv2dNormActivation(256, 256, kernel_size=3, norm_layer=None) for _ in range(rpn_depth)])
+    rpn_processing_object = nn.Sequential(*[Conv2dNormActivation(256, 256, kernel_size=3, norm_layer=None) for _ in range(rpn_depth)])
     num_anchors_per_location = len(scales[0]) * len(aspect_ratios[0])
     rpn_head = RPNHead(rpn_processing_object, 256, num_anchors_per_location)
     proposals_filter = build_batches_proposals_filter(detach=True, pre_nms_top_n=1000, min_size=1e-3, score_thresh=0.0, nms_thresh=0.7, post_nms_top_n=1000)

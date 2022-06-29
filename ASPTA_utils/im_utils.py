@@ -1,4 +1,10 @@
-import numpy as np; import csv; from glob import glob; import os; import sys; import imageio 
+
+import numpy as np
+import csv
+from glob import glob
+import os
+import sys
+import imageio 
 import matplotlib.pyplot as plt; from PIL import Image
 import cv2
 import random
@@ -6,10 +12,12 @@ import itertools
 import h5py
 import colorsys
 from collections import Counter
-from scipy.misc import imread, imsave
+import scipy
+from imageio import imread, imsave
 from skimage.io import imread as skimread
 from skimage.transform import resize
-from skimage.measure import compare_ssim, compare_psnr
+from skimage.metrics import structural_similarity as compare_ssim
+from skimage.metrics import peak_signal_noise_ratio as compare_psnr
 import base64
 import pycocotools.mask as cocomask
 import os.path as osp
